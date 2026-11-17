@@ -1,0 +1,69 @@
+---
+# tasks/replica_set.yml - Khởi tạo MongoDB Replica Set rs0 trên Node đầu tiên (Idempotent)
+
+- name: Kiểm tra trạng thái hiện tại của Replica Set trên node khởi tạo
+  ansible.builtin.command:
+    cmd: "mongosh --port {{ mongodb_port }} --quiet --eval 'try { rs.status().ok } catch(e) { 0 }'"
+  register: rs_status_check
+  changed_when: false
+  failed_when: false
+
+- name: Xác định cờ kiểm tra xem Replica Set đã được khởi tạo trước đó chưa
+  ansible.builtin.set_fact:
+    is_rs_already_initiated: "{{ (rs_status_check.stdout | trim) == '1' }}"
+
+- name: Chuẩn bị nội dung cấu hình khởi tạo 5 members cho Replica Set
+  ansible.builtin.set_fact:
+    rs_init_config: >-
+      {
+        _id: "{{ mongodb_replset_name }}",
+        members: [
+          {% for host in groups['mongodb_nodes'] %}
+          {
+            _id: {{ hostvars[host]['mongo_node_id'] | default(loop.index0) }},
+            host: "{{ hostvars[host]['mongo_bind_ip'] | default(hostvars[host]['ansible_host']) }}:{{ mongodb_port }}"
+          }{{ "," if not loop.last else "" }}
+          {% endfor %}
+        ]
+      }
+
+- name: Thực thi rs.initiate() nếu Replica Set chưa được khởi tạo
+  ansible.builtin.command:
+    cmd: "mongosh --port {{ mongodb_port }} --quiet --eval 'rs.initiate({{ rs_init_config }})'"
+  register: rs_init_result
+  when: not is_rs_already_initiated
+  changed_when: "'\"ok\": 1' in rs_init_result.stdout or '\"ok\" : 1' in rs_init_result.stdout"
+  failed_when:
+    - rs_init_result.rc != 0
+    - "'already initialized' not in rs_init_result.stdout"
+
+- name: Đợi cho cụm Replica Set hoàn tất bầu chọn node PRIMARY (tối đa 60 giây)
+  ansible.builtin.command:
+    cmd: "mongosh --port {{ mongodb_port }} --quiet --eval 'try { rs.status().members.some(m => m.stateStr === \"PRIMARY\") } catch(e) { false }'"
+  register: wait_primary_elected
+  until: wait_primary_elected.stdout | trim == 'true'
+  retries: 30
+  delay: 2
+  changed_when: false
+
+- name: Bổ sung các node còn thiếu nếu Replica Set đã tồn tại từ trước (Đảm bảo Idempotency)
+  when: is_rs_already_initiated
+  block:
+    - name: Lấy danh sách các members hiện có trong Replica Set
+      ansible.builtin.command:
+        cmd: "mongosh --port {{ mongodb_port }} --quiet --eval 'JSON.stringify(rs.conf().members.map(m => m.host))'"
+      register: current_members_raw
+      changed_when: false
+
+    - name: Chuyển đổi danh sách members sang biến JSON
+      ansible.builtin.set_fact:
+        current_members: "{{ current_members_raw.stdout | from_json }}"
+
+    - name: Thêm node vào Replica Set nếu chưa tồn tại
+      ansible.builtin.command:
+        cmd: "mongosh --port {{ mongodb_port }} --quiet --eval 'rs.add(\"{{ hostvars[item]['mongo_bind_ip'] | default(hostvars[item]['ansible_host']) }}:{{ mongodb_port }}\")'"
+      loop: "{{ groups['mongodb_nodes'] }}"
+      when: "(hostvars[item]['mongo_bind_ip'] | default(hostvars[item]['ansible_host'])) ~ ':' ~ (mongodb_port | string) not in current_members"
+      register: rs_add_result
+      changed_when: "'\"ok\": 1' in rs_add_result.stdout or '\"ok\" : 1' in rs_add_result.stdout"
+

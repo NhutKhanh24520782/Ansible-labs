@@ -1,0 +1,25 @@
+# mongod.conf - MongoDB 7.0 Configuration File
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+# Where and how to store data.
+storage:
+  dbPath: {{ mongodb_db_path }}
+
+# Where to write logging data.
+systemLog:
+  destination: file
+  logAppend: true
+  path: {{ mongodb_log_path }}
+
+# Network interfaces
+net:
+  port: {{ mongodb_port }}
+  bindIp: 0.0.0.0
+
+# How the process runs
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+
+# Replication configuration
+replication:
+  replSetName: "{{ mongodb_replset_name }}"

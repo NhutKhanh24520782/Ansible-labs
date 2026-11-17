@@ -1,0 +1,28 @@
+# ==============================================================================
+# Biến cấu hình mẫu cho Terraform - MongoDB Cluster AWS
+# Sao chép file này thành 'terraform.tfvars' và điền thông tin của bạn
+# ==============================================================================
+
+aws_region   = "ap-southeast-1"
+project_name = "nt548"
+environment  = "dev"
+
+vpc_cidr            = "10.0.0.0/16"
+public_subnet_cidr  = "10.0.0.0/24"
+private_subnet_cidr = "10.0.1.0/24"
+availability_zone   = "ap-southeast-1a"
+
+# Điền IP cá nhân của bạn kèm /32 để bảo mật SSH (Lấy IP tại https://checkip.amazonaws.com)
+# TUYỆT ĐỐI KHÔNG DÙNG 0.0.0.0/0
+allowed_ssh_cidr    = "192.168.56.1/32"
+
+# Tên EC2 Key Pair đã tạo sẵn trên AWS Console (Singapore region)
+key_name            = "key"
+
+# Instance types
+instance_type         = "t3.small"
+bastion_instance_type = "t3.micro"
+
+# Bật NAT Gateway để các node trong Private Subnet có thể kết nối ra ngoài tải package APT
+enable_nat_gateway  = true
+

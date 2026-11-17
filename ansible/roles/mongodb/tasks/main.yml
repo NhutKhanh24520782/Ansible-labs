@@ -1,0 +1,18 @@
+---
+# tasks/main.yml - Điều phối toàn bộ quy trình triển khai MongoDB Cluster
+- name: "Bước 1: Cài đặt MongoDB 7.0 và công cụ mongosh trên toàn bộ 5 nodes"
+  ansible.builtin.import_tasks: install.yml
+
+- name: "Bước 2: Cấu hình mongod.conf, port 27017, bind IP và enable service"
+  ansible.builtin.import_tasks: configure.yml
+
+- name: "Bước 3: Khởi tạo MongoDB Replica Set rs0 trên node đầu tiên (Idempotent)"
+  ansible.builtin.import_tasks: replica_set.yml
+  run_once: true
+  when: inventory_hostname == groups['mongodb_nodes'][0]
+
+- name: "Bước 4: Kiểm tra trạng thái Cluster Health (1 PRIMARY & 4 SECONDARY)"
+  ansible.builtin.import_tasks: verify.yml
+  run_once: true
+  when: inventory_hostname == groups['mongodb_nodes'][0]
+

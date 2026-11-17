@@ -1,0 +1,45 @@
+---
+# tasks/configure.yml - Cấu hình mongod.conf và khởi động dịch vụ
+
+- name: Đảm bảo thư mục lưu trữ dữ liệu MongoDB tồn tại
+  ansible.builtin.file:
+    path: "{{ mongodb_db_path }}"
+    state: directory
+    owner: "{{ mongodb_system_user }}"
+    group: "{{ mongodb_system_group }}"
+    mode: '0755'
+
+- name: Đảm bảo thư mục nhật ký log MongoDB tồn tại
+  ansible.builtin.file:
+    path: "{{ mongodb_log_path | dirname }}"
+    state: directory
+    owner: "{{ mongodb_system_user }}"
+    group: "{{ mongodb_system_group }}"
+    mode: '0755'
+
+- name: Cập nhật file cấu hình /etc/mongod.conf từ template
+  ansible.builtin.template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: "restart mongod"
+
+- name: Áp dụng ngay lập tức cấu hình mongod nếu có thay đổi (Flush Handlers)
+  ansible.builtin.meta: flush_handlers
+
+- name: Khởi động và kích hoạt tự động chạy dịch vụ mongod cùng hệ thống
+  ansible.builtin.systemd:
+    name: "{{ mongodb_service_name }}"
+    state: "{{ mongodb_service_state }}"
+    enabled: "{{ mongodb_service_enabled }}"
+
+- name: Chờ MongoDB port 27017 mở và sẵn sàng nhận kết nối
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ mongodb_port }}"
+    delay: 3
+    timeout: 60
+    state: started
+

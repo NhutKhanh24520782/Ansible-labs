@@ -1,0 +1,19 @@
+---
+# Cấu hình chung cho toàn bộ MongoDB Cluster
+mongodb_version: "7.0"
+mongodb_package_version: "7.0.14" # Có thể ghim bản cụ thể hoặc "7.0.*"
+mongodb_port: 27017
+mongodb_replset_name: "rs0"
+
+# Đường dẫn dữ liệu và nhật ký
+mongodb_db_path: "/var/lib/mongodb"
+mongodb_log_path: "/var/log/mongodb/mongod.log"
+
+# Cấu hình mạng: lắng nghe localhost và IP nội bộ của từng node
+mongodb_bind_ip: "127.0.0.1,{{ mongo_bind_ip | default(ansible_default_ipv4.address) }}"
+
+# Khoá GPG và Repository MongoDB 7.0 cho Ubuntu
+mongodb_gpg_key_url: "https://www.mongodb.org/static/pgp/server-7.0.asc"
+mongodb_keyring_path: "/usr/share/keyrings/mongodb-server-7.0.gpg"
+mongodb_repo_url: "https://repo.mongodb.org/apt/ubuntu"
+

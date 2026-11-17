@@ -1,0 +1,13 @@
+---
+# ==============================================================================
+# Playbook: Initial Deployment & Replica Set Initialization cho MongoDB 7.0
+# Target: 5 Ubuntu Servers
+# ==============================================================================
+
+- name: Triển khai và khởi tạo MongoDB 7.0 Replica Set (rs0)
+  hosts: mongodb_nodes
+  become: yes
+  gather_facts: yes
+  roles:
+    - mongodb
+

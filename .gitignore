@@ -1,0 +1,66 @@
+# ==============================================================================
+# .gitignore cho dự án DevOps (Terraform, Ansible, AWS)
+# ==============================================================================
+
+# --- Terraform Files & Directories ---
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Local .terraform directories
+**/.terraform/
+.terraform.lock.hcl
+
+# --- Ansible Files & Logs ---
+*.retry
+ansible.log
+.ansible/
+facts_cache/
+*.pyc
+__pycache__/
+
+# Dynamic generated inventories containing sensitive IP / SSH commands
+terraform/inventory.ini
+*.inventory.ini
+
+# --- SSH Keys, Certificates & Credentials (BẢO MẬT TUYỆT ĐỐI) ---
+*.pem
+*.key
+*.pub
+*.cer
+*.crt
+id_rsa
+id_rsa*
+id_ed25519
+id_ed25519*
+.env
+.env.*
+secrets.auto.tfvars
+
+# --- OS & IDE Files ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# --- Build / CI Artifacts ---
+node_modules/
+dist/
+build/
+.taskcat/
+taskcat_outputs/

@@ -1,0 +1,63 @@
+---
+# tasks/verify.yml - Kiểm tra Cluster Health: 1 PRIMARY và 4 SECONDARY
+
+- name: Chờ tất cả 5 members hoàn tất đồng bộ và đạt trạng thái ổn định (PRIMARY hoặc SECONDARY)
+  ansible.builtin.command:
+    cmd: >-
+      mongosh --port {{ mongodb_port }} --quiet --eval '
+        const status = rs.status();
+        const validStates = ["PRIMARY", "SECONDARY"];
+        const ready = status.members && 
+                      status.members.length === 5 && 
+                      status.members.every(m => validStates.includes(m.stateStr));
+        ready;
+      '
+  register: cluster_stabilized
+  until: cluster_stabilized.stdout | trim == 'true'
+  retries: 30
+  delay: 3
+  changed_when: false
+
+- name: Lấy thông tin trạng thái chi tiết của Replica Set dạng JSON
+  ansible.builtin.command:
+    cmd: "mongosh --port {{ mongodb_port }} --quiet --eval 'JSON.stringify(rs.status())'"
+  register: raw_rs_status
+  changed_when: false
+
+- name: Trích xuất và phân tích trạng thái các node
+  ansible.builtin.set_fact:
+    rs_status_json: "{{ raw_rs_status.stdout | from_json }}"
+
+- name: Thống kê số lượng node PRIMARY và SECONDARY
+  ansible.builtin.set_fact:
+    primary_nodes: "{{ rs_status_json.members | selectattr('stateStr', 'equalto', 'PRIMARY') | list }}"
+    secondary_nodes: "{{ rs_status_json.members | selectattr('stateStr', 'equalto', 'SECONDARY') | list }}"
+
+- name: Xác thực Cluster Health đạt chuẩn (Chính xác 1 PRIMARY và 4 SECONDARY)
+  ansible.builtin.assert:
+    that:
+      - rs_status_json.set == mongodb_replset_name
+      - rs_status_json.members | length == 5
+      - primary_nodes | length == 1
+      - secondary_nodes | length == 4
+    fail_msg: >-
+      Lỗi Cluster Health không đạt yêu cầu: 
+      Tổng số nodes: {{ rs_status_json.members | length }} (yêu cầu 5), 
+      PRIMARY: {{ primary_nodes | length }} (yêu cầu 1), 
+      SECONDARY: {{ secondary_nodes | length }} (yêu cầu 4).
+    success_msg: >-
+      Xác thực Replica Set '{{ mongodb_replset_name }}' THÀNH CÔNG: 
+      Đầy đủ 5 nodes (1 PRIMARY, 4 SECONDARY) sẵn sàng hoạt động!
+
+- name: Hiển thị bảng tổng kết trạng thái Replica Set
+  ansible.builtin.debug:
+    msg:
+      cluster_name: "{{ rs_status_json.set }}"
+      total_members: "{{ rs_status_json.members | length }}"
+      primary: "{{ primary_nodes | map(attribute='name') | list }}"
+      secondaries: "{{ secondary_nodes | map(attribute='name') | list }}"
+      members_detail: >-
+        {{
+          rs_status_json.members | map('json_query', '{id: _id, host: name, state: stateStr, health: health, uptime: uptime}') | list
+        }}
+

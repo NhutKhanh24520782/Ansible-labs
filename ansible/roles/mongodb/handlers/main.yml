@@ -1,0 +1,14 @@
+---
+- name: Restart mongod
+  ansible.builtin.systemd:
+    name: "{{ mongodb_service_name }}"
+    state: restarted
+    daemon_reload: true
+  listen: "restart mongod"
+
+- name: Reload mongod
+  ansible.builtin.systemd:
+    name: "{{ mongodb_service_name }}"
+    state: reloaded
+  listen: "reload mongod"
+

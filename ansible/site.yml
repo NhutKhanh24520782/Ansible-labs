@@ -1,0 +1,4 @@
+---
+# Site Entrypoint
+- import_playbook: playbooks/deploy-mongodb-cluster.yml
+

@@ -1,0 +1,56 @@
+---
+# tasks/install.yml - Cài đặt MongoDB 7.0 trên Ubuntu
+
+- name: Cài đặt các gói phụ trợ cần thiết (curl, gnupg, ca-certificates)
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gnupg
+      - ca-certificates
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Tải MongoDB 7.0 GPG Public Key
+  ansible.builtin.get_url:
+    url: "{{ mongodb_gpg_key_url }}"
+    dest: /tmp/mongodb-server-7.0.asc
+    mode: '0644'
+    force: yes
+
+- name: Chuyển đổi và lưu trữ GPG Key vào /usr/share/keyrings
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat /tmp/mongodb-server-7.0.asc | gpg --dearmor -o "{{ mongodb_keyring_path }}" --yes
+  args:
+    executable: /bin/bash
+    creates: "{{ mongodb_keyring_path }}"
+  changed_when: true
+
+- name: Thêm MongoDB 7.0 APT Repository chính thức
+  ansible.builtin.apt_repository:
+    repo: "deb [ arch=amd64,arm64 signed-by={{ mongodb_keyring_path }} ] {{ mongodb_repo_url }} {{ ansible_distribution_release }}/mongodb-org/7.0 multiverse"
+    state: present
+    filename: mongodb-org-7.0
+    update_cache: yes
+
+- name: Cài đặt gói MongoDB 7.0 và mongosh
+  ansible.builtin.apt:
+    name:
+      - mongodb-org
+      - mongodb-mongosh
+    state: present
+    update_cache: yes
+
+- name: Ghim phiên bản MongoDB để ngăn ngừa tự động nâng cấp ngoài ý muốn (Version Pinning)
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - mongodb-org
+    - mongodb-org-database
+    - mongodb-org-server
+    - mongodb-mongosh
+    - mongodb-org-mongos
+    - mongodb-org-tools
+

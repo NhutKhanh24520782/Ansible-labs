@@ -1,0 +1,14 @@
+---
+# Defaults variables for mongodb role
+mongodb_version: "7.0"
+mongodb_port: 27017
+mongodb_replset_name: "rs0"
+mongodb_db_path: "/var/lib/mongodb"
+mongodb_log_path: "/var/log/mongodb/mongod.log"
+mongodb_system_user: "mongodb"
+mongodb_system_group: "mongodb"
+
+mongodb_service_name: "mongod"
+mongodb_service_state: "started"
+mongodb_service_enabled: true
+
